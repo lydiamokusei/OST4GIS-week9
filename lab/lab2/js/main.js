@@ -51,6 +51,10 @@ The docs: https://www.mapbox.com/api-documentation/#geocoding
 (For this first task, the URL pattern you'll want to produce looks like this:
 `https://api.mapbox.com/geocoding/v5/mapbox.places/{geocode_this}.json?access_token={your_mapbox_token}`)
 
+My token:
+pk.eyJ1IjoibHlzLW1va3VzZWkiLCJhIjoiY2pmaGQ3bDdxMmxpOTMxcGEwZnRwOGtjdSJ9.AqMVqbi0efP1zag5B0a5ng
+https://api.mapbox.com/geocoding/v5/mapbox.places/{University of Pennsylvania}.json?access_token={pk.eyJ1IjoibHlzLW1va3VzZWkiLCJhIjoiY2pmaGQ3bDdxMmxpOTMxcGEwZnRwOGtjdSJ9.AqMVqbi0efP1zag5B0a5ng}`)
+
 You might note that this task is slightly underspecified: there are multiple different
 ways to transform text into an address. For the lab, the simplest form of geocoding
 (i.e. without any further options being specified) is entirely appropriate. More complex
@@ -132,6 +136,7 @@ var goToOrigin = _.once(function(lat, lng) {
   map.flyTo([lat, lng], 14);
 });
 
+var origin = {"lat": 0, "lng": 0};
 
 /* Given a lat and a long, we should create a marker, store it
  *  somewhere, and add it to the map
@@ -149,6 +154,8 @@ $(document).ready(function() {
   if ("geolocation" in navigator) {
     navigator.geolocation.getCurrentPosition(function(position) {
       updatePosition(position.coords.latitude, position.coords.longitude, position.timestamp);
+      origin.lng = position.coords.longitude;
+      origin.lat = position.coords.latitude;
     });
   } else {
     alert("Unable to access geolocation API!");
@@ -170,8 +177,31 @@ $(document).ready(function() {
   $("#calculate").click(function(e) {
     var dest = $('#dest').val();
     console.log(dest);
+    myToken = "pk.eyJ1IjoibHlzLW1va3VzZWkiLCJhIjoiY2pmaGQ3bDdxMmxpOTMxcGEwZnRwOGtjdSJ9.AqMVqbi0efP1zag5B0a5ng";
+    var url = "https://api.mapbox.com/geocoding/v5/mapbox.places/" + dest + ".json?access_token=" + myToken;
+    $.getJSON(url).done(function(destination){
+        _.map(destination.features, function(point){
+        var eachDest = point.geometry.coordinates;
+        var dest_lng = eachDest[0];
+        var dest_lat = eachDest[1];
+        var destMarker = L.circleMarker([dest_lat,dest_lng],{color:"red"}).addTo(map);
+
+        var route = "https://api.mapbox.com/directions/v5/mapbox/driving/" + origin.lng + "," + origin.lat + ";" + dest_lng + "," + dest_lat + "?access_token=" + myToken;
+        $.ajax(route).done(function(data){
+          var eachRoute = decode(data.routes[0].geometry);
+          var latlngs = _.map(eachRoute, function(each) {return [each[1]*10, each[0]*10];});
+          //console.log(latlngs);
+          var line = turf.lineString(latlngs);
+          //console.log(line);
+          var myStyle = {
+              "color": "red",
+              "weight": 2,
+              "opacity": 0.65
+               };
+          L.geoJson(line, {style: myStyle}).addTo(map);
+          });
+        });
+     });
   });
 
 });
-
-
